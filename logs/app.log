@@ -1,0 +1,1 @@
+{"time":"2026-09-17T20:50:00.8444823+07:00","level":"ERROR","msg":"gagal memuat permission","error":"mengambil permission: ERROR: relation \"roles\" does not exist (SQLSTATE 42P01)"}
