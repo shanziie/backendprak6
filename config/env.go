@@ -12,20 +12,21 @@ func LoadEnv() {
 }
 
 func GetEnv(key, fallback string) string {
-	if val := os.Getenv(key); val != "" {
-		return val
+	if value := os.Getenv(key); value != "" {
+		return value
 	}
 	return fallback
 }
 
 func GetEnvInt(key string, fallback int) int {
-	valStr := os.Getenv(key)
-	if valStr == "" {
+	value := os.Getenv(key)
+	if value == "" {
 		return fallback
 	}
-	val, err := strconv.Atoi(valStr)
+
+	parsed, err := strconv.Atoi(value)
 	if err != nil {
 		return fallback
 	}
-	return val
+	return parsed
 }

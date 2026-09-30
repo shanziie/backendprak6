@@ -4,78 +4,34 @@ import (
 	"strings"
 
 	"api-students/app/model"
+	"api-students/helper"
 )
 
-func ValidateCreate(req model.CreateUserRequest) map[string]string {
-	errs := map[string]string{}
-
-	if strings.TrimSpace(req.Username) == "" {
-		errs["username"] = "wajib diisi"
+func CanAccessUser(
+	current model.AuthUser,
+	targetID int,
+	perms *helper.PermissionSet,
+	anyPermission string,
+) bool {
+	if current.UserID == targetID {
+		return true
 	}
-	if !isValidEmail(req.Email) {
-		errs["email"] = "format email tidak valid"
-	}
-	if len(req.Password) < 8 {
-		errs["password"] = "minimal 8 karakter"
-	}
-
-	return errs
+	return perms.Can(current.Role, anyPermission)
 }
 
-func ValidateReplace(req model.ReplaceUserRequest) map[string]string {
-	errs := map[string]string{}
-
-	if strings.TrimSpace(req.Username) == "" {
-		errs["username"] = "wajib diisi pada PUT"
-	}
-	if !isValidEmail(req.Email) {
-		errs["email"] = "wajib diisi dan berformat email pada PUT"
-	}
-
-	return errs
-}
-
-func ApplyPatch(
-	current model.User, req model.PatchUserRequest,
-) (model.User, map[string]string) {
-	errs := map[string]string{}
-
+func ApplyPatch(current model.User, req model.PatchUserRequest) model.User {
 	if req.Username != nil {
-		if strings.TrimSpace(*req.Username) == "" {
-			errs["username"] = "tidak boleh kosong"
-		} else {
-			current.Username = *req.Username
-		}
+		current.Username = strings.TrimSpace(*req.Username)
 	}
 	if req.Email != nil {
-		if !isValidEmail(*req.Email) {
-			errs["email"] = "format email tidak valid"
-		} else {
-			current.Email = *req.Email
-		}
+		current.Email = strings.TrimSpace(*req.Email)
 	}
 	if req.IsActive != nil {
 		current.IsActive = *req.IsActive
 	}
-
-	return current, errs
+	return current
 }
 
 func IsEmptyPatch(req model.PatchUserRequest) bool {
 	return req.Username == nil && req.Email == nil && req.IsActive == nil
-}
-
-func CountTotalPages(total, limit int) int {
-	if limit <= 0 {
-		return 0
-	}
-	return (total + limit - 1) / limit
-}
-
-func isValidEmail(email string) bool {
-	email = strings.TrimSpace(email)
-	at := strings.Index(email, "@")
-	dot := strings.LastIndex(email, ".")
-
-	return at > 0 && dot > at+1 && dot < len(email)-1
 }

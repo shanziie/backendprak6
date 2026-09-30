@@ -1,55 +1,44 @@
 package helper
 
 import (
-	"context"
 	"strconv"
 	"strings"
-	"time"
-
-	"github.com/gofiber/fiber/v2"
 
 	"api-students/app/model"
+
+	"github.com/gofiber/fiber/v2"
 )
 
-func RequestContext(c *fiber.Ctx) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(c.UserContext(), 5*time.Second)
-}
-
 func ParamID(c *fiber.Ctx) (int, bool) {
-	id, err := strconv.Atoi(c.Params("id"))
+	idStr := c.Params("id")
+	id, err := strconv.Atoi(idStr)
 	if err != nil || id < 1 {
 		return 0, false
 	}
 	return id, true
 }
 
-func ParseListQuery(c *fiber.Ctx) model.ListQuery {
-	q := model.ListQuery{
-		Page:   c.QueryInt("page", 1),
-		Limit:  c.QueryInt("limit", 10),
-		Search: strings.TrimSpace(c.Query("search")),
-		Sort:   c.Query("sort", "id"),
-		Order:  strings.ToLower(c.Query("order", "asc")),
+func ParseCursorQuery(c *fiber.Ctx) (model.CursorQuery, error) {
+	limit := c.QueryInt("limit", 10)
+	if limit < 1 || limit > 100 {
+		limit = 10
 	}
 
-	if q.Page < 1 {
-		q.Page = 1
-	}
-	if q.Limit < 1 {
-		q.Limit = 10
-	}
-	if q.Limit > 100 {
-		q.Limit = 100
-	}
-	if q.Order != "desc" {
-		q.Order = "asc"
-	}
+	search := strings.TrimSpace(c.Query("search"))
+	cursorStr := strings.TrimSpace(c.Query("cursor"))
 
-	if raw := c.Query("is_active"); raw != "" {
-		if v, err := strconv.ParseBool(raw); err == nil {
-			q.IsActive = &v
+	var after *model.Cursor
+	if cursorStr != "" {
+		decoded, err := DecodeCursor(cursorStr)
+		if err != nil {
+			return model.CursorQuery{}, err
 		}
+		after = &decoded
 	}
 
-	return q
+	return model.CursorQuery{
+		Limit:  limit,
+		Search: search,
+		After:  after,
+	}, nil
 }

@@ -1,5 +1,3 @@
--- 004_student_permissions.sql
-
 -- 1. Tambahkan permission baru terkait student
 INSERT INTO permissions (name, description) VALUES
     ('student:list',       'Melihat daftar seluruh mahasiswa'),

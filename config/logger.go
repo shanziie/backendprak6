@@ -1,45 +1,25 @@
 package config
 
 import (
-	"io"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strings"
-
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 func NewLogger() *slog.Logger {
-	if err := os.MkdirAll("logs", 0o755); err != nil {
-		panic("gagal membuat folder logs: " + err.Error())
-	}
-
-	rotator := &lumberjack.Logger{
-		Filename:   filepath.Join("logs", "app.log"),
-		MaxSize:    10,
-		MaxBackups: 5,
-		MaxAge:     14,
-		Compress:   true,
-	}
-
-	writer := io.MultiWriter(os.Stdout, rotator)
-	handler := slog.NewJSONHandler(writer, &slog.HandlerOptions{
-		Level: parseLevel(GetEnv("LOG_LEVEL", "info")),
-	})
-
-	logger := slog.New(handler)
-	slog.SetDefault(logger)
-	return logger
+	level := parseLevel(GetEnv("LOG_LEVEL", "INFO"))
+	return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
 }
 
 func parseLevel(value string) slog.Level {
-	switch strings.ToLower(value) {
-	case "debug":
+	switch strings.ToUpper(strings.TrimSpace(value)) {
+	case "DEBUG":
 		return slog.LevelDebug
-	case "warn":
+	case "INFO":
+		return slog.LevelInfo
+	case "WARN", "WARNING":
 		return slog.LevelWarn
-	case "error":
+	case "ERROR":
 		return slog.LevelError
 	default:
 		return slog.LevelInfo

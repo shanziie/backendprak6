@@ -1,3 +1,5 @@
 .env
-logs/
-*.log
+/logs/
+/tmp/
+.DS_Store
+students.csv

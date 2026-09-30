@@ -1,22 +1,20 @@
 package middleware
 
 import (
-	"github.com/gofiber/fiber/v2"
-
 	"api-students/helper"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 func RequirePermission(perms *helper.PermissionSet, permission string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		user, ok := helper.CurrentUser(c)
+		current, ok := helper.CurrentUser(c)
 		if !ok {
-			return helper.Fail(c, fiber.StatusUnauthorized, "belum terautentikasi")
+			return helper.Unauthorized("belum terautentikasi")
 		}
-
-		if !perms.Can(user.Role, permission) {
-			return helper.Fail(c, fiber.StatusForbidden, "role "+user.Role+" tidak memiliki hak "+permission)
+		if !perms.Can(current.Role, permission) {
+			return helper.Forbidden("tidak memiliki izin untuk melakukan aksi ini")
 		}
-
 		return c.Next()
 	}
 }
@@ -28,15 +26,13 @@ func RequireRole(roles ...string) fiber.Handler {
 	}
 
 	return func(c *fiber.Ctx) error {
-		user, ok := helper.CurrentUser(c)
+		current, ok := helper.CurrentUser(c)
 		if !ok {
-			return helper.Fail(c, fiber.StatusUnauthorized, "belum terautentikasi")
+			return helper.Unauthorized("belum terautentikasi")
 		}
-
-		if _, granted := allowed[user.Role]; !granted {
-			return helper.Fail(c, fiber.StatusForbidden, "role Anda tidak berhak mengakses endpoint ini")
+		if _, ok := allowed[current.Role]; !ok {
+			return helper.Forbidden("role anda tidak diizinkan")
 		}
-
 		return c.Next()
 	}
 }

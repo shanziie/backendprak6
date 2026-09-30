@@ -1,25 +1,21 @@
 package model
 
+import "time"
+
 type WebResponse struct {
-	Success bool              `json:"success"`
-	Message string            `json:"message,omitempty"`
-	Data    any               `json:"data,omitempty"`
-	Meta    *Meta             `json:"meta,omitempty"`
-	Errors  map[string]string `json:"errors,omitempty"`
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Data    any    `json:"data,omitempty"`
 }
 
-type Meta struct {
-	Page       int `json:"page"`
-	Limit      int `json:"limit"`
-	Total      int `json:"total"`
-	TotalPages int `json:"total_pages"`
-}
-
-type ListQuery struct {
-	Page     int
+type CursorQuery struct {
 	Limit    int
 	Search   string
-	Sort     string
-	Order    string
 	IsActive *bool
+	After    *Cursor
+}
+
+type Cursor struct {
+	CreatedAt time.Time
+	ID        int
 }
