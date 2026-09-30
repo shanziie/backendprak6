@@ -1,46 +1,73 @@
 package middleware
 
 import (
-	"errors"
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/limiter"
-
 	"api-students/helper"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 func RequireAuth(jwtManager *helper.JWTManager) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		header := c.Get(fiber.HeaderAuthorization)
-		parts := strings.SplitN(header, " ", 2)
-		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
-			c.Set("WWW-Authenticate", `Bearer realm="api"`)
-			return helper.Fail(c, fiber.StatusUnauthorized, "header Authorization tidak valid")
+		authHeader := c.Get(fiber.HeaderAuthorization)
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+			return helper.Unauthorized("header Authorization tidak ada atau salah bentuk")
 		}
 
-		authUser, err := jwtManager.Parse(parts[1])
+		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+		user, err := jwtManager.VerifyAccessToken(tokenStr)
 		if err != nil {
-			c.Set("WWW-Authenticate", `Bearer realm="api"`)
-			if errors.Is(err, helper.ErrExpiredToken) {
-				return helper.Fail(c, fiber.StatusUnauthorized, "access token kedaluwarsa")
-			}
-			return helper.Fail(c, fiber.StatusUnauthorized, "access token tidak valid")
+			return helper.Unauthorized("access token tidak valid")
 		}
 
-		c.Locals(helper.LocalsAuthUser, authUser)
+		c.Locals("user", user)
+		return c.Next()
+	}
+}
+
+func RequireJSON() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		if c.Method() == fiber.MethodPost || c.Method() == fiber.MethodPut || c.Method() == fiber.MethodPatch {
+			ct := c.Get(fiber.HeaderContentType)
+			if !strings.HasPrefix(ct, "application/json") {
+				return helper.UnsupportedMediaType("Content-Type harus application/json")
+			}
+		}
 		return c.Next()
 	}
 }
 
 func LoginRateLimiter() fiber.Handler {
-	return limiter.New(limiter.Config{
-		Max:        5,
-		Expiration: 1 * time.Minute,
-		LimitReached: func(c *fiber.Ctx) error {
-			c.Set("Retry-After", "60")
-			return helper.Fail(c, fiber.StatusTooManyRequests, "terlalu banyak percobaan")
-		},
-	})
+	var (
+		mu       sync.Mutex
+		attempts = make(map[string][]time.Time)
+	)
+
+	return func(c *fiber.Ctx) error {
+		ip := c.IP()
+		now := time.Now()
+
+		mu.Lock()
+		defer mu.Unlock()
+
+		window := time.Minute
+		maxAttempts := 5
+
+		var validAttempts []time.Time
+		for _, t := range attempts[ip] {
+			if now.Sub(t) < window {
+				validAttempts = append(validAttempts, t)
+			}
+		}
+
+		if len(validAttempts) >= maxAttempts {
+			return helper.TooManyRequests("terlalu banyak percobaan login, coba lagi dalam satu menit")
+		}
+
+		attempts[ip] = append(validAttempts, now)
+		return c.Next()
+	}
 }

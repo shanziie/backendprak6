@@ -1,39 +1,40 @@
 package helper
 
 import (
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/hex"
-
-	"golang.org/x/crypto/bcrypt"
+	"strings"
+	"unicode"
 )
 
-const bcryptCost = 10
-
-var dummyHash = []byte("$2a$10$abcdefghijklmnopqrstuuLKa3Bt1TCmU/6zvhZ8x4nq1yBiuGvS")
-
-func HashPassword(plain string) (string, error) {
-	hashed, err := bcrypt.GenerateFromPassword([]byte(plain), bcryptCost)
-	return string(hashed), err
-}
-
-func VerifyPassword(hash, plain string) bool {
-	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(plain)) == nil
-}
-
-func VerifyDummyPassword(plain string) {
-	_ = bcrypt.CompareHashAndPassword(dummyHash, []byte(plain))
-}
-
-func RandomToken(numBytes int) (string, error) {
-	buf := make([]byte, numBytes)
-	if _, err := rand.Read(buf); err != nil {
-		return "", err
+func passwordStrength(pwd string) string {
+	if len(pwd) < 8 {
+		return "minimal 8 karakter"
 	}
-	return hex.EncodeToString(buf), nil
-}
+	if len(pwd) > 72 {
+		return "maksimal 72 karakter"
+	}
 
-func SHA256Hex(value string) string {
-	sum := sha256.Sum256([]byte(value))
-	return hex.EncodeToString(sum[:])
+	hasLetter := false
+	hasDigit := false
+
+	for _, r := range pwd {
+		if unicode.IsLetter(r) {
+			hasLetter = true
+		}
+		if unicode.IsDigit(r) {
+			hasDigit = true
+		}
+	}
+
+	if !hasLetter || !hasDigit {
+		return "harus memuat huruf dan angka"
+	}
+
+	commonPasswords := []string{"password123", "12345678", "qwertyuiop", "admin123"}
+	for _, cp := range commonPasswords {
+		if strings.EqualFold(pwd, cp) {
+			return "password terlalu umum"
+		}
+	}
+
+	return ""
 }
